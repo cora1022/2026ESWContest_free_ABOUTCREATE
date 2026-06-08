@@ -1,10 +1,13 @@
-#pip install google-generativeai
+﻿#pip install google-generativeai
+import os
 import google.generativeai as genai
 import actions 
 from actions import robot
 
-# 1. API 키 설정 (본인의 키로 변경)
-API_KEY = "AIzaSyBvjFYV0uYJZCceUQ4s9XL5rgH6QMn1CeI"
+# 1. API key is read from the environment. Do not commit real keys.
+API_KEY = os.getenv('GOOGLE_API_KEY')
+if not API_KEY:
+    raise RuntimeError('GOOGLE_API_KEY environment variable is required.')
 genai.configure(api_key=API_KEY)
 
 # 2. 제미나이가 사용할 수 있는 물리적 행동(함수) 목록

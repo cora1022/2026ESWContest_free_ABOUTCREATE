@@ -1,10 +1,13 @@
-# main_brain.py
+﻿# main_brain.py
+import os
 from google import genai
 from google.genai import types
 from actions import move_forward, spin_around, stop_moving, speak
 
-# 본인의 API 키로 변경하세요
-client = genai.Client(api_key="AIzaSyBvjFYV0uYJZCceUQ4s9XL5rgH6QMn1CeI")
+api_key = os.getenv('GOOGLE_API_KEY')
+if not api_key:
+    raise RuntimeError('GOOGLE_API_KEY environment variable is required.')
+client = genai.Client(api_key=api_key)
 
 available_tools = [move_forward, spin_around, stop_moving, speak]
 
