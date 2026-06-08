@@ -4,11 +4,18 @@ import google.generativeai as genai
 import actions 
 from actions import robot
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # 1. API key is read from the environment. Do not commit real keys.
 API_KEY = os.getenv('GOOGLE_API_KEY')
 if not API_KEY:
     raise RuntimeError('GOOGLE_API_KEY environment variable is required.')
 genai.configure(api_key=API_KEY)
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
 
 # 2. 제미나이가 사용할 수 있는 물리적 행동(함수) 목록
 # (주의: 말하기 기능은 기본 응답 텍스트로 처리하므로 도구 목록에서 뺐습니다)
@@ -21,7 +28,7 @@ tool_list = [
 
 # 3. 모델 초기화 및 시스템 지침 설정
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name=GEMINI_MODEL,
     tools=tool_list,
     system_instruction=(
         "당신은 라즈베리파이 5 기반의 자율주행 로봇입니다. "

@@ -4,10 +4,17 @@ from google import genai
 from google.genai import types
 from actions import move_forward, spin_around, stop_moving, speak
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 api_key = os.getenv('GOOGLE_API_KEY')
 if not api_key:
     raise RuntimeError('GOOGLE_API_KEY environment variable is required.')
 client = genai.Client(api_key=api_key)
+gemini_model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
 
 available_tools = [move_forward, spin_around, stop_moving, speak]
 
@@ -27,7 +34,7 @@ def decide_and_act(user_command: str, distance: float):
     print("🤔 제미나이 생각 중...")
     
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model=gemini_model,
         contents=prompt,
         config=types.GenerateContentConfig(
             tools=available_tools,
