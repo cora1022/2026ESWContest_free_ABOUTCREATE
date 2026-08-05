@@ -1,7 +1,7 @@
 # Raspberry Pi AI Robot
 
 <p align="center">
-  <img src="docs/images/robot-complete.jpg" alt="카메라와 초음파 센서를 장착한 Raspberry Pi 로봇 완성본" width="760">
+  <img src="docs/images/robot-demo.gif" alt="Gemini function calling으로 동작하는 Raspberry Pi 로봇 시연" width="760">
 </p>
 
 Raspberry Pi 기반 이동 로봇에 Gemini function calling을 연결해 자연어 명령을 실제 행동으로 변환하는 프로젝트입니다. 거리 센서와 카메라로 주변 상황을 확인하고, 허용된 행동 함수 안에서 이동·정지·회전·음성 응답을 수행하는 흐름을 실험했습니다.
