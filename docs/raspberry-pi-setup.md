@@ -1,70 +1,65 @@
 # Raspberry Pi Setup
 
-This guide prepares a Raspberry Pi 5 or Raspberry Pi 4 for the robot control experiment.
+[English](raspberry-pi-setup.md) | [한국어](ko/raspberry-pi-setup.md)
 
-## Hardware Checklist
+This guide prepares Raspberry Pi OS for the public function-calling example. It does not turn the current repository into a motor controller: the public source has no GPIO driver, sensor read, camera input, or microphone command loop.
 
-- Raspberry Pi 5 or Raspberry Pi 4
-- microSD card, 32 GB or larger
-- USB microphone or ReSpeaker-style mic
-- Speaker or 3.5 mm / USB audio output
-- Motor driver such as L298N, TB6612FNG, or a compatible H-bridge
-- Two DC motors or a small robot chassis
-- Ultrasonic distance sensor such as HC-SR04
-- Optional camera module or USB webcam
-- Separate motor battery pack
-- Common ground between Raspberry Pi, motor driver, and sensors
+## 1. Prepare Raspberry Pi OS
 
-## OS Preparation
-
-1. Install Raspberry Pi OS 64-bit.
-2. Enable SSH if remote development is needed.
-3. Update packages.
+Use a supported 64-bit Raspberry Pi OS release, configure networking, and enable SSH only if remote access is needed.
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y python3-venv python3-pip git portaudio19-dev
+sudo apt install -y git python3-venv python3-pip alsa-utils
 ```
 
-## Project Setup
+`alsa-utils` is useful for checking speaker devices. Additional audio packages can vary by Raspberry Pi OS release and connected hardware.
+
+## 2. Clone and Install
 
 ```bash
-git clone https://github.com/cora1022/robot.git
-cd robot
+git clone https://github.com/cora1022/gemini-raspberry-pi-robot.git
+cd gemini-raspberry-pi-robot
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and set `GOOGLE_API_KEY`.
+## 3. Configure Gemini
 
 ```bash
 nano .env
 ```
 
-## Audio Check
+```text
+GOOGLE_API_KEY=your-google-api-key
+GEMINI_MODEL=gemini-2.5-flash
+```
 
-Check microphone and speaker devices before connecting robot logic.
+Do not commit the real `.env` file.
+
+## 4. Check Audio
 
 ```bash
-arecord -l
 aplay -l
 speaker-test -t wav -c 2
 ```
 
-## Run
+`actions.py` uses gTTS, which requires network access, and pygame, which requires a working output device. Audio errors are caught and printed, so a movement stub may still run even if speech playback fails.
+
+## 5. Run the Current Example
 
 ```bash
-source .venv/bin/activate
-python main_brain.py
+python test_case.py
 ```
 
-## Safety Notes
+This command makes three live Gemini API requests with simulated distance values. It may consume API quota. It does not read a physical ultrasonic sensor or move a motor.
 
-- Keep motors powered from a separate battery pack.
-- Share ground between the Pi and the motor driver.
-- Do not power motors from the Raspberry Pi 5V pin.
-- Test movement with wheels lifted before placing the robot on the floor.
-- Keep `GOOGLE_API_KEY` in `.env` only and never commit it.
+Do not use `python main_brain.py` as an expected test entrypoint. The file defines `decide_and_act` but does not call it when executed directly.
+
+## Hardware Integration Is Additional Work
+
+To control a physical robot, add and test a hardware adapter, sensor reads, deterministic safety checks, GPIO cleanup, an emergency stop, and failure handling. The example GPIO map in the wiring guide is conceptual and is not referenced by the current Python source.

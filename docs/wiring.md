@@ -1,51 +1,52 @@
 # Wiring Guide
 
-This guide documents the Raspberry Pi wiring used by the robot control flow.
+[English](wiring.md) | [한국어](ko/wiring.md)
+
+This is a conceptual integration reference for future hardware work. The public Python source does not configure these pins or drive the listed components.
 
 ## Conceptual Wiring
 
 ```mermaid
 flowchart LR
-    Pi["Raspberry Pi 5"]
-    Mic["USB Microphone"]
+    Pi["Raspberry Pi"]
+    Camera["USB camera"]
     Speaker["Speaker"]
-    Sensor["HC-SR04 Distance Sensor"]
-    Driver["Motor Driver"]
-    Battery["Motor Battery"]
-    Motors["Left / Right Motors"]
+    Sensor["HC-SR04"]
+    Driver["Motor driver"]
+    Battery["Separate motor supply"]
+    Motors["Left / right motors"]
 
-    Mic --> Pi
+    Camera --> Pi
     Pi --> Speaker
     Sensor --> Pi
     Pi --> Driver
     Battery --> Driver
     Driver --> Motors
-    Battery -. common ground .- Pi
+    Battery -. "common ground" .- Pi
 ```
 
-## Suggested GPIO Map
+## Example BCM GPIO Map
 
-Adjust these pins to match the motor driver and chassis.
+These are example BCM numbers, not a verified map from the public code. Confirm the board pinout, motor driver, enabled interfaces, and your own wiring before implementation.
 
-| Component | Raspberry Pi Pin | Notes |
-| --- | --- | --- |
-| Left motor IN1 | GPIO17 | Direction |
-| Left motor IN2 | GPIO27 | Direction |
-| Right motor IN1 | GPIO22 | Direction |
-| Right motor IN2 | GPIO23 | Direction |
-| Motor PWM A | GPIO18 | PWM speed control |
-| Motor PWM B | GPIO13 | PWM speed control |
-| HC-SR04 TRIG | GPIO5 | Output |
-| HC-SR04 ECHO | GPIO6 | Input through voltage divider |
-| GND | GND | Common ground |
+| Component | Example BCM GPIO | Purpose |
+| --- | ---: | --- |
+| Left motor IN1 | 17 | Direction |
+| Left motor IN2 | 27 | Direction |
+| Right motor IN1 | 22 | Direction |
+| Right motor IN2 | 23 | Direction |
+| Motor PWM A | 18 | Speed control |
+| Motor PWM B | 13 | Speed control |
+| HC-SR04 TRIG | 5 | Output |
+| HC-SR04 ECHO | 6 | Input through voltage conversion |
 
-## Important Electrical Notes
+## Electrical Safety
 
-- HC-SR04 echo is often 5V. Use a voltage divider or level shifter before connecting to Raspberry Pi GPIO.
-- Motor drivers can inject noise. Keep sensor wires short and separate from motor power wires.
-- Add a physical power switch for the motor battery.
-- Start with low PWM values until direction and braking are confirmed.
+- Use a separate supply sized for the motors and driver. Do not power motors from the Raspberry Pi 5 V pin.
+- Connect grounds according to the motor-driver design so control signals share a reference.
+- A typical HC-SR04 ECHO output is 5 V. Use a suitable voltage divider or level shifter before Raspberry Pi GPIO.
+- Add a physical motor-power switch and keep it reachable.
+- Keep motor power wiring away from sensor signals where practical.
+- Start with the chassis raised, low speed, short durations, and one wheel or direction at a time.
 
-## Implementation Note
-
-Keep `actions.py` as the stable interface used by Gemini function calling, and keep GPIO-specific details behind the hardware boundary.
+No current repository file implements this map. Wiring hardware without a reviewed GPIO adapter and code-level safety interlock is outside the supported public example.
