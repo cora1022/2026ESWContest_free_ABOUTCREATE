@@ -7,7 +7,7 @@
 [Project Status](#project-status) · [Quick Start](#quick-start) · [Demo](#demo) · [Architecture](docs/architecture.md) · [Hardware Setup](docs/raspberry-pi-setup.md)
 
 <p align="center">
-  <img src="docs/images/robot-demo.gif" alt="Physical Gemini Raspberry Pi robot prototype demo" width="760">
+  <img src="docs/images/robot-demo-en.gif" alt="Physical Gemini Raspberry Pi robot prototype demo with English captions" width="760">
 </p>
 
 ## Project Status
