@@ -1,8 +1,4 @@
-﻿# main_brain.py
-import os
-from google import genai
-from google.genai import types
-from actions import move_forward, spin_around, stop_moving, speak
+import time
 
 try:
     from dotenv import load_dotenv
@@ -10,49 +6,111 @@ try:
 except ImportError:
     pass
 
-api_key = os.getenv('GOOGLE_API_KEY')
-if not api_key:
-    raise RuntimeError('GOOGLE_API_KEY environment variable is required.')
-client = genai.Client(api_key=api_key)
-gemini_model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+from hardware import RobotHardware
+from actions import RobotActions
 
-available_tools = [move_forward, spin_around, stop_moving, speak]
+WAKE_WORDS = ["명령시작", "명령 시작", "명령을시작", "명령을 시작"]
+EXIT_WORDS = ["종료", "꺼져", "끝내", "프로그램 종료", "그만"]
 
-def decide_and_act(user_command: str, distance: float):
-    """
-    가상의 사용자 명령과 초음파 센서 거리를 입력받아 제미나이에게 전달합니다.
-    """
-    prompt = f"""
-    사용자 명령: "{user_command}"
-    현재 전방 장애물까지의 거리: {distance}cm
-    
-    당신은 이 로봇의 두뇌입니다. 전방 20cm 이내에 장애물이 있다면 
-    앞으로 가지 말고 멈추거나 경고를 말해야 합니다.
-    가장 적절한 행동을 선택하여 함수를 호출하세요.
-    """
-    
-    print("🤔 제미나이 생각 중...")
-    
-    response = client.models.generate_content(
-        model=gemini_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=available_tools,
-            temperature=0.2, 
-        )
-    )
-    
-    if response.function_calls:
-        for function_call in response.function_calls:
-            function_name = function_call.name
-            args = {k: v for k, v in function_call.args.items()} if function_call.args else {}
-            
-            # 1. 먼저 동작을 수행하기 전에 사용자에게 무엇을 할지 말하게 할 수도 있습니다.
-            # speak(f"{function_name} 동작을 시작합니다.") 
-            
-            # 2. 실제 함수 실행
-            globals()[function_name](**args)
-    else:
-        # 제미나이가 일반적인 텍스트 답변을 한 경우
-        # 이 내용을 컴퓨터 스피커로 읽어줍니다.
-        speak(response.text)
+
+def normalize(text):
+    return text.replace(" ", "").strip()
+
+
+def is_wake_word(text):
+    t = normalize(text)
+    return any(normalize(word) in t for word in WAKE_WORDS)
+
+
+def is_exit_command(text):
+    t = normalize(text)
+    return any(normalize(word) in t for word in EXIT_WORDS)
+
+
+def listen_command_with_retry(hw, retry_count=2):
+    for attempt in range(1, retry_count + 1):
+        hw.command_led_on()
+        try:
+            command = hw.listen_korean(
+                max_seconds=8.0,
+                silence_after=1.2,
+                wait_timeout=8.0,
+                hard_limit_seconds=30.0,
+                keep_recording_while_voice=True,
+            )
+        finally:
+            hw.command_led_off()
+
+        if command:
+            return command
+
+        if attempt < retry_count:
+            hw.speak("잘 못 들었어요. 다시 말씀해주세요.")
+            time.sleep(0.25)
+
+    return ""
+
+
+def main():
+    hw = RobotHardware()
+    actions = RobotActions(hw)
+
+    try:
+        # 명령 시작 대기 중에는 LED OFF
+        hw.command_led_off()
+        hw.speak("로봇이 켜졌습니다. 명령 시작이라고 말하면 준비할게요.")
+        print("✅ 대기 모드 시작")
+        print("👉 '명령 시작' 대기 중에는 LED OFF")
+        print("👉 실제 명령 듣는 중에는 LED ON")
+        print("👉 명령 처리 중에는 LED BLINK")
+
+        while True:
+            print("\n👂 대기 중... '명령 시작'을 기다립니다. LED는 꺼져 있습니다.")
+            hw.command_led_off()
+            wake_text = hw.listen_korean(
+                max_seconds=3.0,
+                silence_after=0.6,
+                wait_timeout=8.0,
+                hard_limit_seconds=4.0,
+                keep_recording_while_voice=False,
+            )
+
+            if not wake_text:
+                continue
+            if is_exit_command(wake_text):
+                hw.speak("프로그램을 종료할게요.")
+                break
+            if not is_wake_word(wake_text):
+                continue
+
+            hw.speak("네, 말씀해주세요.")
+            time.sleep(0.25)
+            command = listen_command_with_retry(hw, retry_count=2)
+
+            if not command:
+                print("🤫 명령이 들리지 않아 대기 모드로 돌아갑니다.")
+                hw.command_led_off()
+                continue
+
+            print(f"🚀 최종 명령: {command}")
+
+            if is_exit_command(command):
+                hw.speak("프로그램을 종료할게요.")
+                break
+
+            hw.start_led_blink()
+            try:
+                actions.handle_command(command)
+            finally:
+                hw.stop_led_blink()
+                hw.command_led_off()
+
+    except KeyboardInterrupt:
+        print("\n🧹 사용자가 종료했습니다.")
+        hw.speak("종료합니다.")
+    finally:
+        hw.cleanup()
+
+
+if __name__ == "__main__":
+    main()

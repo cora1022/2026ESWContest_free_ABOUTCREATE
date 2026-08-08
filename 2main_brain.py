@@ -1,4 +1,10 @@
 ﻿#pip install google-generativeai
+"""Legacy function-calling experiment retained for reference.
+
+The current physical robot entrypoint is main_brain.py. This historical file
+depends on an older ``robot`` object and is not part of the restored runtime.
+"""
+
 import os
 import google.generativeai as genai
 import actions 

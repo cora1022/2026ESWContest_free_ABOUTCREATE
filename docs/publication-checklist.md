@@ -2,37 +2,57 @@
 
 [English](publication-checklist.md) | [한국어](ko/publication-checklist.md)
 
-Use this checklist before publishing source, images, recordings, or demo links.
+Use this checklist for source files, Git history, backup archives, build photos, audio, and demo videos.
 
-## Secrets and Git History
+## Secrets and history
 
-- Confirm `.env` and real API keys are not tracked.
-- Search current files and every reachable Git commit for keys, tokens, credentials, private keys, Wi-Fi passwords, and service-account files.
-- Remember that deleting a secret from the latest commit does not remove it from Git history. Revoke exposed credentials first.
+- [ ] No `.env`, live API key, password, private key, or service-account file is tracked.
+- [ ] All branches, tags, commits, archives, bytecode, logs, and editor backups were scanned.
+- [ ] Any exposed credential was revoked before repository cleanup.
+- [ ] `.env.example` contains placeholders only.
 
 ```bash
 git status --ignored
-git grep -n -I -E "GOOGLE_API_KEY|AIza|secret|token|password|credential"
-git log -p --all | rg -i "GOOGLE_API_KEY|AIza|secret|token|password|credential|BEGIN .*PRIVATE KEY"
+git ls-files
+git grep -n -I -E "AIza|API_KEY|secret|token|password|credential"
+git log -p --all | rg -i "AIza|API_KEY|secret|token|password|BEGIN .*PRIVATE KEY"
 ```
 
-## Personal and Location Data
+Do not paste discovered values into issues or documentation. Revoke first, then assess history, forks, and caches.
 
-- Review names, email addresses, usernames, hostnames, IP addresses, home paths, device serial numbers, and command history.
-- Remove Wi-Fi SSIDs, passwords, access points, static network details, and precise physical locations.
-- Check image metadata and visible backgrounds, screens, labels, reflections, badges, and documents.
-- Review voice recordings for names, conversations, addresses, or other identifying details.
+## Privacy and media
 
-## Demo Scope
+- [ ] Names, email addresses, phone numbers, local paths, device names, Wi-Fi, IP, SSH, and port-forwarding details were reviewed.
+- [ ] Photos and videos do not expose faces, private voices, documents, IDs, labels, or license plates without consent.
+- [ ] EXIF and location metadata were reviewed.
+- [ ] YouTube visibility and logged-out link access match the intended scope.
+- [ ] Captured JPEG and audio files are not unintentionally tracked.
+- [ ] Network use by Gemini, Google speech recognition, and gTTS is documented.
 
-- Confirm every person visible or audible has agreed to publication.
-- Confirm thumbnails and linked videos have the intended visibility.
-- Describe recorded prototype features separately from features reproducible with public code.
-- Do not imply that prompt instructions provide a hardware safety guarantee.
+## Code and documentation agreement
 
-## Final Repository Review
+- [ ] `python main_brain.py` is documented as the current physical entrypoint.
+- [ ] `test_case.py` is described as planning-only, not a hardware test.
+- [ ] The Gemini JSON plan, allowlisted dispatcher, and `hardware.py` path are described accurately.
+- [ ] GPIO, camera, microphone, ultrasonic pins, and thresholds match the code.
+- [ ] The 25 cm single-forward guard and 18 cm continuous-motion stop are distinguished.
+- [ ] Sensor timeout, missing rear/side sensors, and missing physical emergency stop are listed as limitations.
+- [ ] `2main_brain.py` is not presented as runnable current code.
+- [ ] Demo capabilities and the restored integrated source are linked to the same implementation lineage.
 
-- Test all relative documentation and image links.
-- Confirm the clone URL and setup commands use the current repository name.
-- Verify the license and third-party asset permissions.
-- Review the diff and commit list one final time from a clean clone if possible.
+## Physical safety
+
+- [ ] HC-SR04 ECHO is level-shifted from 5 V to 3.3 V.
+- [ ] Motor supply, driver, common ground, and protection are verified.
+- [ ] Direction, stop, and distance guards were tested with wheels raised.
+- [ ] An accessible physical motor-power switch is available.
+- [ ] Initial motion tests use low speed in a clear space.
+
+## Final repository checks
+
+- [ ] Clone links use `cora1022/gemini-raspberry-pi-robot.git`.
+- [ ] Relative links and images resolve.
+- [ ] Python syntax checks pass.
+- [ ] `git diff --check` and secret scans pass.
+- [ ] Licenses and external asset permissions are verified.
+- [ ] Setup instructions were reviewed from a fresh clone.

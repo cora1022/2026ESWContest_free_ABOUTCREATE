@@ -2,82 +2,88 @@
 
 # Gemini Raspberry Pi Robot
 
-> A public function-calling experiment derived from a physical Raspberry Pi robot prototype.
+> A Raspberry Pi 5 robot that listens, inspects its surroundings, plans allowed actions with Gemini, and moves through a guarded hardware layer.
 
-[Project Status](#project-status) · [Quick Start](#quick-start) · [Demo](#demo) · [Architecture](docs/architecture.md) · [Hardware Setup](docs/raspberry-pi-setup.md)
+[Project story (Korean)](docs/ko/project-story.md) · [Architecture](docs/architecture.md) · [Setup](docs/raspberry-pi-setup.md) · [Wiring](docs/wiring.md) · [Publication checklist](docs/publication-checklist.md)
 
 <p align="center">
-  <img src="docs/images/robot-demo-en.gif" alt="Physical Gemini Raspberry Pi robot prototype demo with English captions" width="760">
+  <img src="docs/images/robot-demo-en.gif" alt="Gemini Raspberry Pi physical robot demo" width="760">
 </p>
 
-## Project Status
+## Overview
 
-This repository documents a physical robot prototype and publishes a smaller, reproducible experiment for studying Gemini function calling. The public Python code sends a natural-language command and a caller-supplied distance value to Gemini and supplies a limited set of Python action functions as tools.
+This individual project replaced a regular assignment in an IoT course. After considering an assistive cane, a breath analyzer, and a person-detection web app, the project moved toward a more compelling idea: combine Raspberry Pi hardware with an LLM API to build a robot that can inspect a situation, choose an action, and move.
 
-The public source is **not a complete hardware control package**. Camera capture, ultrasonic sensor reads, GPIO motor control, microphone input, and the integrated `robot` object used during earlier prototype work are not included in the current executable path.
+The robot waits for a Korean wake phrase, records speech, converts it to text, and asks Gemini for a JSON sequence made only from supported actions. The application normalizes that plan and dispatches it to GPIO motors, an HC-SR04 sensor, a USB camera, or speech output. Camera questions and object navigation use Gemini Vision.
 
-| Area | Current public repository status |
+## Source restoration
+
+The repository was republished with a new Git root on July 9, 2026. That snapshot accidentally included an early function-calling experiment instead of the final May 28 hardware integration used for the class presentation. The recordings showed real movement, vision, sensing, and speech, while the public files contained print-only stubs.
+
+On August 9, the final `robot_pj_long_listen` backup was located and its `main_brain.py`, `actions.py`, and `hardware.py` were restored. Old backups containing a revoked credential were not used. The current source reads credentials only from `.env` or the process environment.
+
+## Implemented capabilities
+
+| Area | Current public source |
 | --- | --- |
-| Gemini function calling | Implemented in `main_brain.py` |
-| Tool execution mode | Python callables are passed directly; current `google-genai` enables automatic function calling by default |
-| Reproducible example | Three API-backed scenarios in `test_case.py` |
-| Forward, spin, and stop actions | Console-output stubs in `actions.py` |
-| Speech output | Implemented with gTTS and pygame; requires network and a working audio device |
-| Distance input | Supplied as a number by `test_case.py`; no sensor read is implemented |
-| 20 cm obstacle rule | Written in the Gemini prompt only; not enforced by application code |
-| Camera and image input | Not implemented in the current public Python code |
-| GPIO and motor control | Not implemented in the current public Python code |
-| `hardware.py` | Contains print-only stubs and is not imported by `main_brain.py` |
-| `2main_brain.py` | Legacy, non-runnable reference; it depends on symbols absent from `actions.py` |
+| Voice commands | Records with `arecord` and transcribes Korean with Google Speech Recognition |
+| Planning | Gemini returns a JSON `steps` array containing supported actions |
+| Fallback | A rule-based parser handles commands when Gemini is unavailable |
+| Sequential motion | Forward, backward, left, right, turn-around, and stop with bounded repetition |
+| Distance | Reads HC-SR04 three times and uses the median |
+| Forward guard | Rechecks distance and blocks forward motion within 25 cm by default |
+| Continuous approach | Polls the sensor and stops at 18 cm by default |
+| Camera | Captures USB camera frames with OpenCV |
+| Vision | Gemini Vision checks objects, positions, and visual conditions |
+| Object approach | Alternates vision, alignment, and short movement for at most seven steps |
+| Speech | Generates Korean TTS and plays it with `mpg123` or `ffplay` |
+| Status LED | Shows idle, listening, and processing state on GPIO25 |
 
-## Public Repository Scope
-
-The code in this repository currently demonstrates:
-
-- declaring `move_forward`, `spin_around`, `stop_moving`, and `speak` as Gemini tools;
-- combining a natural-language command with a simulated distance value;
-- letting the Python SDK automatically execute supplied callables under its current default behavior;
-- inspecting the returned response and attempting manual dispatch if `response.function_calls` is still present;
-- printing virtual movement results; and
-- optionally generating and playing Korean speech through gTTS and pygame.
-
-It does not include the complete software used to connect the physical prototype's camera, sensor, motors, or microphone. The wiring and hardware documents are integration references, not proof that the current public code drives those devices.
-
-## Physical Prototype vs Public Code
-
-| Capability | Physical prototype and demo recordings | Current public code |
-| --- | --- | --- |
-| Natural-language decisions | Demonstrated | Reproducible through Gemini API calls |
-| Multi-step physical movement | Shown in recordings | Gemini may return multiple calls, but movement functions only print messages |
-| Camera inspection | Shown in recordings | No camera import, capture, or image input path |
-| Ultrasonic sensing | Shown in recordings | Distance is manually supplied by the caller |
-| Motor and GPIO control | Shown in recordings | No GPIO library or motor driver implementation |
-| Speech | Shown in recordings | gTTS and pygame path is present; device support varies by environment |
-| Obstacle interlock | Prototype behavior is shown in recordings | The 20 cm rule is prompt guidance, not a code-level interlock |
-
-The videos are evidence of prototype experiments. They should not be interpreted as a claim that every recorded hardware feature can be reproduced from this public snapshot alone.
-
-## Current Function-Calling Flow
+## Runtime flow
 
 ```mermaid
 flowchart LR
-    Test["test_case.py\ncommand + simulated distance"] --> Brain["main_brain.py\ndecide_and_act"]
-    Brain --> Prompt["Prompt with command, distance,\nand 20 cm guidance"]
-    Prompt --> Gemini["Gemini API"]
-    Gemini --> Auto["SDK automatic function calling\nenabled by default"]
-    Auto --> Actions["actions.py"]
-    Actions --> Move["Movement stubs\nconsole output"]
-    Actions --> Speech["gTTS + pygame\nspeech attempt"]
-    Gemini --> Response["Response returned"]
-    Response --> Manual["Optional response.function_calls\nmanual dispatch branch"]
-    Hardware["hardware.py\nprint-only stubs"] -. "not connected" .-> Brain
+    Wake["Korean wake phrase"] --> STT["arecord + SpeechRecognition"]
+    STT --> Planner["Gemini JSON plan"]
+    Planner --> Validate["Normalize action and repeat"]
+    Validate --> Dispatch["Allowed-action dispatcher"]
+    Dispatch --> Motor["GPIO motors"]
+    Dispatch --> Sensor["HC-SR04"]
+    Dispatch --> Vision["OpenCV + Gemini Vision"]
+    Dispatch --> Speech["gTTS + audio player"]
+    Sensor --> Guard["Code-level forward guard"]
+    Guard --> Motor
+    Planner -. "API failure" .-> Fallback["Rule-based parser"]
+    Fallback --> Validate
 ```
 
-See [Architecture](docs/architecture.md) for the verified call sequence and [한국어 아키텍처 문서](docs/ko/architecture.md) for a detailed discussion of the current boundary and a separately labeled future design.
+Gemini never receives direct GPIO access. It proposes supported action names and parameters; `RobotActions` validates and dispatches them to `RobotHardware`. Forward movement also checks a fresh distance value in code rather than relying only on a prompt.
 
-## Quick Start
+## Demo recordings
 
-### 1. Clone and create a virtual environment
+| Recording | Demonstrated behavior |
+| --- | --- |
+| [Approaching an obstacle](https://youtu.be/QIJOv5Q-LHc) | Ultrasonic distance checks and guarded movement |
+| [Inspecting an object and moving](https://youtu.be/0o1b3L9IwOY) | Camera, Gemini Vision, and motor control |
+| [Audio output](https://youtu.be/ix_nwpkvWfA) | TTS and speaker playback |
+| [Repeated forward and backward motion](https://youtube.com/shorts/KLmq6Mq9xEY?feature=share) | Sequential actions and repetition |
+| [Inspecting after movement](https://youtube.com/shorts/O0WwkEZf5KQ?feature=share) | Fresh capture and visual response after movement |
+
+## Hardware and BCM pins
+
+- Raspberry Pi 5, L298N, two-wheel DC chassis, separate motor supply
+- HC-SR04, USB camera, USB microphone and speaker, status LED
+
+| Device | BCM GPIO |
+| --- | --- |
+| L298N IN1 / IN2 | 5 / 6 |
+| L298N IN3 / IN4 | 16 / 26 |
+| HC-SR04 TRIG / ECHO | 23 / 24 |
+| Status LED | 25 |
+
+Protect GPIO24 from the HC-SR04 ECHO pin's typical 5 V level with a divider or level shifter. Read the [wiring guide](docs/wiring.md) before connecting hardware.
+
+## Quick start
 
 ```bash
 git clone https://github.com/cora1022/gemini-raspberry-pi-robot.git
@@ -89,116 +95,46 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-On Windows PowerShell, activate the environment with:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### 2. Configure the environment
-
-Edit `.env` and set a valid Gemini API key:
+Set at least:
 
 ```text
 GOOGLE_API_KEY=your-google-api-key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Keep the real key in `.env`. The repository ignores that file and tracks only `.env.example`.
-
-### 3. Run the reproducible example
+Check command planning without initializing hardware:
 
 ```bash
 python test_case.py
 ```
 
-`test_case.py` runs three scenarios: a forward request with 100 cm of simulated clearance, a forward request with a simulated obstacle at 15 cm, and a spin request at 50 cm. Each scenario makes a real Gemini API request, so network access, API credentials, quota, and possibly billing are required. Model output is nondeterministic, and the 15 cm scenario is not protected by a code-level block. Because Python callables are supplied directly and automatic function calling is not disabled, the current SDK can execute them during `generate_content` before `main_brain.py` inspects the returned response.
-
-Running the following command does **not** start an interactive robot test:
+Run the physical robot only after completing the setup and wiring checks:
 
 ```bash
 python main_brain.py
 ```
 
-`main_brain.py` currently loads configuration, creates the Gemini client, defines `decide_and_act`, and then exits because it has no command-line entrypoint.
+`main_brain.py` initializes GPIO and the camera immediately. Keep the wheels off the floor and prepare a physical power cutoff during the first run.
 
-## Demo
+## Files
 
-The following recordings show physical prototype experiments. Some recorded capabilities—especially camera inspection, sensor reads, and motor control—are outside the current public code scope.
-
-| Demo | What the recording shows |
+| File | Responsibility |
 | --- | --- |
-| <a href="https://youtu.be/QIJOv5Q-LHc"><img src="https://img.youtube.com/vi/QIJOv5Q-LHc/hqdefault.jpg" alt="Physical robot approaching an obstacle" width="280"></a> | **Approaching an obstacle**<br>A physical movement and distance-aware prototype test. |
-| <a href="https://youtu.be/0o1b3L9IwOY"><img src="https://img.youtube.com/vi/0o1b3L9IwOY/hqdefault.jpg" alt="Physical robot inspecting an object and moving backward" width="280"></a> | **Inspecting an object and moving**<br>A camera-assisted prototype test. Camera code is not included here. |
-| <a href="https://youtu.be/ix_nwpkvWfA"><img src="https://img.youtube.com/vi/ix_nwpkvWfA/hqdefault.jpg" alt="Physical robot playing audio" width="280"></a> | **Playing audio**<br>A speaker output experiment. |
-| <a href="https://youtube.com/shorts/KLmq6Mq9xEY?feature=share"><img src="https://img.youtube.com/vi/KLmq6Mq9xEY/hqdefault.jpg" alt="Physical robot repeating forward and backward movement" width="280"></a> | **Repeating movement**<br>A multi-action physical prototype test. |
-| <a href="https://youtube.com/shorts/O0WwkEZf5KQ?feature=share"><img src="https://img.youtube.com/vi/O0WwkEZf5KQ/hqdefault.jpg" alt="Physical robot evaluating an image after moving" width="280"></a> | **Inspecting after movement**<br>A camera and movement prototype test. Image handling is not included here. |
+| `main_brain.py` | Wake phrase, voice retry, and the runtime loop |
+| `actions.py` | Gemini planning, fallback parser, dispatch, vision, and object navigation |
+| `hardware.py` | GPIO motors, HC-SR04, LED, camera, recording, STT, and TTS |
+| `test_case.py` | Planning scenarios that do not initialize physical hardware |
+| `2main_brain.py` | Legacy function-calling experiment, not the current entrypoint |
 
-## Hardware Used in the Prototype
+## Safety and limitations
 
-- Raspberry Pi 5
-- L298N motor driver
-- Two-wheel DC motor chassis with a separate motor power supply
-- HC-SR04 ultrasonic distance sensor
-- USB camera
-- Microphone and speaker or USB audio device
+- The code has forward distance checks, but a physical emergency stop is still required.
+- An ultrasonic timeout is treated as open space at the configured maximum distance; it cannot always distinguish open space from a disconnected sensor.
+- Backward and turning motion have no rear or side sensors.
+- Gemini Vision, speech recognition, and gTTS depend on network latency.
+- The rule fallback is a minimal path for simple commands and does not parse multi-action language as reliably as Gemini.
+- Camera and USB audio indices vary by device order.
+- Optional music files are intentionally excluded from the repository.
+- Automated hardware tests and a physical emergency-stop input are not implemented.
 
-These components describe the prototype and intended integration. The current source does not contain a verified GPIO pin map or executable drivers for them. Read the [hardware setup](docs/raspberry-pi-setup.md) and [wiring guide](docs/wiring.md) before writing or connecting a hardware layer.
-
-## Project Structure
-
-| Path | Verified responsibility |
-| --- | --- |
-| `main_brain.py` | Creates the Gemini client, supplies four Python callables as tools, and implements `decide_and_act(command, distance)`. |
-| `actions.py` | Implements gTTS/pygame speech and print-only forward, spin, and stop functions. |
-| `hardware.py` | Contains a second set of print-only stubs; it is not connected to the primary flow. |
-| `test_case.py` | Calls `decide_and_act` with three simulated command/distance scenarios. |
-| `2main_brain.py` | Retained legacy experiment; currently fails because `robot` and `move_backward` are absent. |
-| `docs/` | English integration notes and Korean detailed documentation. |
-
-## Current Limitations
-
-- There is no command listener, speech recognition loop, or interactive CLI in the primary path.
-- Distance values are not read from an HC-SR04; they are passed directly into `decide_and_act`.
-- The 20 cm rule is prompt text. Gemini can still return `move_forward`, and no application guard blocks it.
-- Movement functions do not control GPIO or motors.
-- `hardware.py` is not imported or called by `main_brain.py` or `actions.py`.
-- No Python file captures camera frames or sends images to Gemini.
-- `speak` depends on Google TTS network access and a working pygame audio device.
-- `test_case.py` makes live model calls rather than deterministic unit tests.
-- Automatic function calling is not explicitly configured, and `google-genai` is not version-pinned; tool execution and returned response details can vary with the installed SDK.
-- A manual `response.function_calls` branch remains after the SDK's default automatic calling path, so the intended execution ownership is not clearly separated.
-- `2main_brain.py` is not runnable in the current repository state.
-
-## Safety Notes
-
-- Treat all Gemini output as untrusted control input.
-- Do not connect the current action stubs directly to motors without adding deterministic validation, duration limits, an emergency stop, and a code-level distance interlock.
-- Prompt instructions are not safety mechanisms. Sensor checks must be performed by application code immediately before motor execution.
-- Power motors separately from the Raspberry Pi and share ground only as required by the driver design.
-- Protect Raspberry Pi GPIO from the HC-SR04 ECHO pin's typical 5 V level with an appropriate divider or level shifter.
-- Raise the wheels off the floor for the first hardware test and keep a physical power cutoff within reach.
-- Never commit `.env`, API keys, Wi-Fi credentials, recorded voices, or private camera images.
-
-## Documentation
-
-### English
-
-- [Architecture](docs/architecture.md)
-- [Raspberry Pi setup](docs/raspberry-pi-setup.md)
-- [Wiring guide](docs/wiring.md)
-- [Publication checklist](docs/publication-checklist.md)
-
-### 한국어
-
-- [전체 한국어 README](README.md)
-- [아키텍처](docs/ko/architecture.md)
-- [Raspberry Pi 설정](docs/ko/raspberry-pi-setup.md)
-- [배선 가이드](docs/ko/wiring.md)
-- [공개 전 체크리스트](docs/ko/publication-checklist.md)
-
-## Build Gallery
-
-| Controller | Chassis | Wiring |
-| --- | --- | --- |
-| <img src="docs/images/build-01-controller.jpg" alt="L298N motor driver and Raspberry Pi controller" width="280"> | <img src="docs/images/build-02-chassis.jpg" alt="Two-wheel robot chassis" width="280"> | <img src="docs/images/build-03-wiring.jpg" alt="Motor driver wiring used during prototype work" width="280"> |
+See [Architecture](docs/architecture.md), [Raspberry Pi setup](docs/raspberry-pi-setup.md), [Wiring](docs/wiring.md), and the [Publication checklist](docs/publication-checklist.md) for details.

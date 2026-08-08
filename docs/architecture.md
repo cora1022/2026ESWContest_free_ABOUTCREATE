@@ -2,61 +2,78 @@
 
 [English](architecture.md) | [한국어](ko/architecture.md)
 
-## Verified Public-Code Flow
+This document describes the verified execution path in the restored May 28, 2026 integrated source. The difference between that source and the shortened July 9 public snapshot is recorded in the [Korean project story](ko/project-story.md).
+
+## Runtime flow
 
 ```mermaid
 flowchart LR
-    Test["test_case.py\ncommand + simulated distance"] --> Brain["main_brain.py\ndecide_and_act"]
-    Brain --> Gemini["google-genai\ngenerate_content"]
-    Gemini --> Auto["SDK automatic function calling\nenabled by default"]
-    Auto --> Actions["actions.py"]
-    Actions --> Move["Move / spin / stop\nconsole output only"]
-    Actions --> Speech["gTTS + pygame\nspeech attempt"]
-    Gemini --> Response["Response returned to main_brain.py"]
-    Response --> Manual["Optional response.function_calls\nmanual dispatch branch"]
-    Hardware["hardware.py\nprint-only stubs"] -. "not imported" .-> Brain
+    Mic["USB microphone\narecord"] --> STT["SpeechRecognition\nKorean STT"]
+    STT --> Main["main_brain.py\nwake and exit phrases"]
+    Main --> Planner["RobotActions\nGemini JSON plan"]
+    Planner --> Normalize["allowlist normalization\nrepeat capped at 10"]
+    Normalize --> Dispatch["action dispatcher"]
+    Dispatch --> Motor["RobotHardware\nGPIO motors"]
+    Dispatch --> Vision["OpenCV capture\nGemini Vision"]
+    Dispatch --> Sensor["HC-SR04 distance"]
+    Dispatch --> Speech["gTTS playback"]
+    Sensor --> Guard["code-level forward guard"]
+    Guard --> Motor
 ```
 
-`test_case.py` is the only runnable example entrypoint. Importing `main_brain.py` requires `GOOGLE_API_KEY`, creates a Gemini client, and defines `decide_and_act`. The test file calls that function with three hard-coded commands and distance numbers.
+## Module roles
 
-`main_brain.py` passes Python callables directly in `GenerateContentConfig.tools`. According to the current [Google Gen AI Python SDK documentation](https://googleapis.github.io/python-genai/), automatic Python function calling is enabled unless explicitly disabled. This repository does not disable it. The SDK can therefore execute an action during `generate_content`. The code then also checks `response.function_calls` and manually invokes matching globals if calls are still exposed in the returned response. Exact response details can vary with the installed SDK because `requirements.txt` sets only a minimum version.
+`main_brain.py` loads `.env`, creates `RobotHardware` and `RobotActions`, listens for a Korean wake phrase, captures a command with retries, and passes it to `RobotActions.run_command()`.
 
-## Verified Module Roles
+`actions.py` asks Gemini for a JSON action plan. It does not expose arbitrary Python functions to the model and does not evaluate generated code. It parses the JSON, normalizes action names, caps repeats at ten, and dispatches only known actions. API or JSON failures use a rule-based command fallback.
 
-| File | Current role |
+`hardware.py` is connected to the primary runtime and contains the current device layer:
+
+| Device | Verified implementation |
 | --- | --- |
-| `main_brain.py` | Configures Gemini, provides four Python function tools, builds the prompt, and inspects the response. |
-| `actions.py` | Provides gTTS/pygame speech plus print-only forward, spin, and stop functions. |
-| `hardware.py` | Provides another set of print-only functions; it is not imported by the primary flow. |
-| `test_case.py` | Makes three live Gemini API calls with simulated distance values. |
-| `2main_brain.py` | Legacy reference that cannot currently import `robot` and also expects a missing `move_backward` function. |
+| Motors | BCM GPIO 5, 6, 16, and 26 |
+| Ultrasonic sensor | HC-SR04, TRIG 23 and ECHO 24 |
+| Command LED | BCM GPIO 25 |
+| Camera | OpenCV `VideoCapture`, default index 1, 640×480 JPEG |
+| Speech input | `arecord` raw stream and Google Korean recognition |
+| Speech output | gTTS cache with `mpg123` or `ffplay` |
 
-## Safety Boundary
+## Vision and object approach
 
-The prompt tells Gemini not to move forward when the supplied distance is at or below 20 cm. No application condition checks that value before an action runs. The current 20 cm rule is therefore guidance to the model, not a deterministic safety interlock.
+Scene questions, visual conditions, and object approach capture a JPEG and send it to Gemini Vision. Object approach repeats for at most seven steps. Each step checks ultrasonic distance, captures a new image, requests JSON alignment guidance, and then turns or advances briefly.
 
-The public movement functions do not control GPIO, which limits the immediate physical risk of this snapshot. Before adding real motor code, introduce a code-level validator that checks fresh sensor data, action names, arguments, duration limits, stop state, and hardware errors immediately before execution.
+This path has network and vision latency. A camera result is not a safety guarantee.
 
-## Features Outside the Current Path
+## Safety boundary
 
-The primary public path does not contain microphone input, a command loop, HC-SR04 reads, camera capture, image input, GPIO setup, motor drivers, or post-action visual inspection. Those features appear in physical prototype recordings but are not reproducible from this code alone.
+The current source includes deterministic checks as well as model prompts:
 
-## Recommended Future Architecture
+- `move_forward()` reads a fresh distance and rejects forward motion at or below 25 cm by default.
+- Continuous forward motion rechecks distance and stops at 18 cm by default.
+- Object approach checks distance before each step.
+- A stuck-high ECHO signal and measurement exceptions return 0 cm, producing a stop.
+- Shutdown attempts motor stop, camera release, and GPIO cleanup.
 
-The following diagram is a recommendation, not the current implementation.
+Known limits remain:
 
-```mermaid
-flowchart LR
-    Input["Command input"] --> Planner["Gemini planner"]
-    Camera["Camera adapter"] --> Context["Validated context"]
-    Sensor["Distance adapter"] --> Context
-    Context --> Planner
-    Planner --> Dispatcher["Allowlisted dispatcher\nargument validation"]
-    Sensor --> Interlock["Deterministic safety interlock"]
-    Dispatcher --> Interlock
-    Interlock -->|allowed| Hardware["GPIO hardware adapter"]
-    Interlock -->|blocked| Stop["Stop + error report"]
-    EStop["Physical emergency stop"] --> Hardware
-```
+- An ECHO-rise timeout is currently treated as the maximum distance (400 cm), rather than a fail-stop state.
+- There are no rear or side sensors and no physical emergency-stop implementation.
+- Timed motor actions vary with floor friction, load, and battery voltage.
+- Speech recognition and Gemini Vision can be wrong.
+- The rule fallback can misclassify action order and targets in compound commands.
 
-Keep model planning, deterministic safety policy, and device drivers as separate layers. Tests should use fake sensor and hardware implementations, while Raspberry Pi-specific code should remain behind explicit interfaces.
+Use an accessible motor power switch, test with wheels raised, and begin at low speed in an open area.
+
+## Supporting files
+
+- `test_case.py` inspects command planning without calling hardware methods. It uses the rule fallback when no API key is configured.
+- `2main_brain.py` is a legacy experiment that expects a missing `robot` object. It is not the current entrypoint and is not runnable as-is.
+
+## Recommended improvements
+
+- Treat all sensor timeouts as explicit fail-stop states.
+- Validate per-action duration and count limits with tests.
+- Add fake device adapters for hardware-free unit tests.
+- Add a physical emergency stop, more directional sensors, and battery monitoring.
+- Measure audio, camera, and API latency and evaluate asynchronous or local alternatives.
+- Archive or remove the legacy `2main_brain.py` path.

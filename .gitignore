@@ -3,4 +3,8 @@
 !.env.example
 __pycache__/
 *.pyc
-speech.mp3
+*.mp3
+*.wav
+music/
+robot_camera_*.jpg
+.DS_Store

@@ -2,21 +2,21 @@
 
 [English](raspberry-pi-setup.md) | [한국어](ko/raspberry-pi-setup.md)
 
-This guide prepares Raspberry Pi OS for the public function-calling example. It does not turn the current repository into a motor controller: the public source has no GPIO driver, sensor read, camera input, or microphone command loop.
+This guide prepares the restored integrated runtime on Raspberry Pi OS. Read the [wiring guide](wiring.md) before connecting motor power.
 
-## 1. Prepare Raspberry Pi OS
+## System packages
 
-Use a supported 64-bit Raspberry Pi OS release, configure networking, and enable SSH only if remote access is needed.
+Use a supported 64-bit Raspberry Pi OS image.
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y git python3-venv python3-pip alsa-utils
+sudo apt install -y git python3-venv python3-pip alsa-utils mpg123 ffmpeg libgl1 libglib2.0-0
 ```
 
-`alsa-utils` is useful for checking speaker devices. Additional audio packages can vary by Raspberry Pi OS release and connected hardware.
+Board and OS versions can affect GPIO backend compatibility. The code imports the `RPi.GPIO` interface; if installation fails, check the compatible package for your board and OS rather than forcing an unverified driver.
 
-## 2. Clone and Install
+## Clone and install
 
 ```bash
 git clone https://github.com/cora1022/gemini-raspberry-pi-robot.git
@@ -25,41 +25,76 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-## 3. Configure Gemini
+## Environment
 
 ```bash
+cp .env.example .env
 nano .env
 ```
 
-```text
+Set at least:
+
+```dotenv
 GOOGLE_API_KEY=your-google-api-key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Do not commit the real `.env` file.
+Then verify device-specific values such as `AUDIO_DEVICE`, `CAMERA_INDEX`, GPIO pins, `SAFE_DISTANCE_CM`, and `ULTRASONIC_STOP_CM`. Never commit `.env`.
 
-## 4. Check Audio
+## Audio checks
 
 ```bash
+arecord -l
 aplay -l
-speaker-test -t wav -c 2
+arecord -D plughw:3,0 -f S16_LE -r 48000 -c 1 -d 3 microphone-test.wav
+aplay microphone-test.wav
 ```
 
-`actions.py` uses gTTS, which requires network access, and pygame, which requires a working output device. Audio errors are caught and printed, so a movement stub may still run even if speech playback fails.
+Replace the device name with the one reported on your system. Speech recognition and gTTS require network access.
 
-## 5. Run the Current Example
+## Camera check
+
+```bash
+python - <<'PY'
+import cv2
+camera = cv2.VideoCapture(1)
+ok, frame = camera.read()
+print("camera:", ok, None if frame is None else frame.shape)
+camera.release()
+PY
+```
+
+Try other indices and inspect `/dev/video*` if capture fails.
+
+## Planning-only check
 
 ```bash
 python test_case.py
 ```
 
-This command makes three live Gemini API requests with simulated distance values. It may consume API quota. It does not read a physical ultrasonic sensor or move a motor.
+This script does not call GPIO, camera, microphone, or motor methods. With an API key it prints Gemini JSON plans; without a key it exercises the rule fallback. It is not a physical safety test.
 
-Do not use `python main_brain.py` as an expected test entrypoint. The file defines `decide_and_act` but does not call it when executed directly.
+## Physical runtime
 
-## Hardware Integration Is Additional Work
+Only after wiring and raised-wheel tests:
 
-To control a physical robot, add and test a hardware adapter, sensor reads, deterministic safety checks, GPIO cleanup, an emergency stop, and failure handling. The example GPIO map in the wiring guide is conceptual and is not referenced by the current Python source.
+```bash
+python main_brain.py
+```
+
+The program listens for a Korean wake phrase, captures a command, and dispatches allowed actions. Keep the motor power switch within reach. `2main_brain.py` is a legacy experiment that expects a missing `robot` object and is not runnable as the current entrypoint.
+
+## First hardware test order
+
+1. Verify wiring and sensor readings with motor power disconnected.
+2. Confirm HC-SR04 ECHO voltage conversion.
+3. Raise the wheels off the floor.
+4. Test motor direction and stop without Gemini.
+5. Verify the 25 cm forward guard and 18 cm continuous-motion stop.
+6. Exercise sensor fault conditions.
+7. Add camera, microphone, and Gemini one layer at a time.
+8. Begin short, low-speed floor tests in an open area.
+
+Battery voltage, motor polarity, floor friction, USB device numbering, and network latency can all affect behavior even when the Python process runs normally.
