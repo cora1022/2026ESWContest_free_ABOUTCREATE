@@ -2,136 +2,136 @@
 
 [English](../raspberry-pi-setup.md) | [한국어](raspberry-pi-setup.md)
 
-이 문서는 Raspberry Pi OS에서 현재 공개된 Gemini function calling 예제를 실행하는 방법을 설명합니다. 아래 절차만으로 실제 모터가 움직이지는 않습니다. 공개 코드에는 GPIO, 실제 거리 센서 읽기, 카메라 입력과 마이크 명령 수집이 구현되어 있지 않습니다.
+이 문서는 Raspberry Pi OS에서 현재 통합 코드를 준비하는 절차입니다. 실제 모터를 연결하기 전에 [배선 가이드](wiring.md)와 안전 주의사항을 먼저 확인하세요.
 
-## 준비물과 범위
+## 1. 운영체제와 시스템 패키지
 
-코드 흐름만 확인하려면 Raspberry Pi와 인터넷 연결, Gemini API 키, Python 환경이면 충분합니다. 음성 재생을 확인하려면 스피커 또는 USB 오디오 장치가 추가로 필요합니다.
-
-실물 프로토타입에서 사용한 Raspberry Pi 5, 모터 드라이버, DC 모터, HC-SR04와 카메라는 현재 공개 예제를 실행하는 데 필수는 아닙니다. 장치를 연결해도 현재 코드가 제어하지 않습니다.
-
-## 1. Raspberry Pi OS 준비
-
-지원되는 64비트 Raspberry Pi OS를 설치하고 네트워크를 설정합니다. 원격 개발이 필요할 때만 SSH를 활성화합니다.
+64비트 Raspberry Pi OS를 준비하고 필요한 경우에만 SSH를 활성화합니다.
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y git python3-venv python3-pip alsa-utils
+sudo apt install -y git python3-venv python3-pip alsa-utils mpg123 ffmpeg libgl1 libglib2.0-0
 ```
 
-- `git`: 저장소 복제에 사용합니다.
-- `python3-venv`: 프로젝트별 가상환경을 만듭니다.
-- `python3-pip`: Python 패키지를 설치합니다.
-- `alsa-utils`: `aplay`, `speaker-test`로 오디오 장치를 확인할 때 사용합니다.
+- `alsa-utils`: `arecord`, `aplay`, 오디오 장치 확인
+- `mpg123`·`ffmpeg`: gTTS 음성 재생과 대체 재생 경로
+- `libgl1`·`libglib2.0-0`: OpenCV 실행에 필요할 수 있는 시스템 라이브러리
 
-Raspberry Pi OS 버전과 오디오 장치에 따라 추가 시스템 패키지가 필요할 수 있습니다. 현재 공개 코드에는 마이크 입력이 없으므로 PortAudio나 음성 인식 패키지는 필수가 아닙니다.
+Raspberry Pi OS 버전과 보드에 따라 GPIO 백엔드 호환성이 다를 수 있습니다. 이 코드는 `RPi.GPIO` 인터페이스를 사용하므로 설치 오류가 나면 사용 중인 보드·OS에 맞는 호환 패키지를 확인해야 합니다.
 
-## 2. 저장소 복제
+## 2. 저장소 복제와 가상환경
 
 ```bash
 git clone https://github.com/cora1022/gemini-raspberry-pi-robot.git
 cd gemini-raspberry-pi-robot
-```
 
-저장소 이름이 `robot`에서 `gemini-raspberry-pi-robot`으로 변경되었으므로 이전 clone 주소를 사용하지 않습니다.
-
-## 3. Python 가상환경
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-```
-
-터미널 프롬프트 앞에 `(.venv)`가 표시되는지 확인합니다. 새 터미널을 열었다면 프로젝트 폴더에서 `source .venv/bin/activate`를 다시 실행합니다.
-
-## 4. requirements.txt 설치
-
-```bash
 pip install -r requirements.txt
 ```
 
-설치되는 주요 패키지는 다음과 같습니다.
+새 터미널을 열었다면 프로젝트 폴더에서 `source .venv/bin/activate`를 다시 실행합니다.
 
-- `google-genai`: `main_brain.py`의 Gemini 호출
-- `google-generativeai`: 실행 불가능한 이전 실험 파일 `2main_brain.py`가 참조하는 SDK
-- `python-dotenv`: `.env` 읽기
-- `gTTS`: 한국어 음성 MP3 생성
-- `pygame`: 생성한 음성 파일 재생
-
-의존성은 최소 버전만 지정되어 있어 설치 시점에 따라 SDK 동작이 달라질 수 있습니다. 재현성이 중요하면 검증한 버전을 별도 환경에서 고정해야 합니다.
-
-## 5. 환경변수 설정
+## 3. 환경변수
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-```text
+최소 설정은 다음과 같습니다.
+
+```dotenv
 GOOGLE_API_KEY=your-google-api-key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-- `GOOGLE_API_KEY`에는 실제 키를 넣습니다.
-- `GEMINI_MODEL`은 사용할 수 있는 모델명으로 바꿀 수 있습니다.
-- `.env`는 `.gitignore`에 포함되어 있으나, 커밋 전에 `git status`로 다시 확인합니다.
-- API 호출에는 인터넷 연결이 필요하며 할당량이나 비용이 발생할 수 있습니다.
+실제 장치에 맞춰 다음 값을 확인합니다.
 
-## 6. 오디오 장치 확인
+```dotenv
+AUDIO_DEVICE=plughw:3,0
+CAMERA_INDEX=1
+SAFE_DISTANCE_CM=25
+ULTRASONIC_STOP_CM=18
+ULTRASONIC_TRIG=23
+ULTRASONIC_ECHO=24
+COMMAND_LED_PIN=25
+```
+
+`.env`는 커밋하지 않습니다. 실행 전 `git status --ignored`로 무시 상태를 확인하고, 키가 노출되었다면 파일 삭제보다 먼저 키를 폐기합니다.
+
+## 4. 마이크와 스피커 확인
+
+장치 번호를 찾습니다.
 
 ```bash
+arecord -l
 aplay -l
+```
+
+`.env`의 `AUDIO_DEVICE`와 같은 장치로 짧게 녹음합니다.
+
+```bash
+arecord -D plughw:3,0 -f S16_LE -r 48000 -c 1 -d 3 microphone-test.wav
+aplay microphone-test.wav
 speaker-test -t wav -c 2
 ```
 
-`actions.py`의 `speak`는 gTTS로 `speech.mp3`를 생성한 뒤 pygame으로 재생합니다. gTTS는 네트워크를 사용합니다. pygame 믹서 초기화나 재생에 실패하면 코드가 오류를 출력하고 계속 진행합니다.
+장치 번호와 지원 샘플레이트는 환경마다 다릅니다. 음성 인식과 gTTS는 네트워크 연결에도 영향을 받습니다.
 
-음성 출력이 필요하지 않더라도 현재 코드는 모델이 텍스트만 반환하면 `speak`를 호출할 수 있습니다. 조용한 환경에서 테스트하거나 오디오 장치가 없는 경우 이 동작을 미리 고려하세요.
+## 5. 카메라 확인
 
-## 7. 현재 재현 가능한 예제 실행
+`CAMERA_INDEX`가 맞는지 OpenCV로 확인합니다.
+
+```bash
+python - <<'PY'
+import cv2
+camera = cv2.VideoCapture(1)
+ok, frame = camera.read()
+print("camera:", ok, None if frame is None else frame.shape)
+camera.release()
+PY
+```
+
+`False`가 나오면 `/dev/video*`와 USB 연결을 확인하고 index를 0, 1, 2 순서로 바꿔 봅니다.
+
+## 6. 명령 계획만 시험하기
 
 ```bash
 python test_case.py
 ```
 
-실행하면 세 개의 명령과 가상 거리 값이 Gemini API로 전달됩니다. 전진·회전·정지 함수가 선택되면 실제 모터 대신 콘솔에 동작 메시지가 출력됩니다. 음성 함수가 선택되거나 일반 텍스트 응답이 오면 음성 재생을 시도할 수 있습니다.
+이 스크립트는 GPIO, 카메라, 마이크, 모터 메서드를 호출하지 않습니다. API 키가 있으면 Gemini의 JSON 계획을 확인하고, 없으면 규칙 기반 대체 결과를 보여 줍니다. 하드웨어 안전 시험을 대신하지는 않습니다.
 
-다음 명령은 테스트를 시작하지 않습니다.
+## 7. 실제 로봇 실행
+
+배선, 바퀴를 띄운 모터 시험, 거리 센서 값을 모두 확인한 뒤 실행합니다.
 
 ```bash
 python main_brain.py
 ```
 
-`main_brain.py`에는 명령행 진입점이 없어 환경변수 확인과 클라이언트 생성, 함수 정의 후 종료됩니다.
+프로그램은 호출어를 기다린 뒤 명령을 다시 듣습니다. 종료 시에는 `종료`, `끝내`, `그만` 같은 음성 명령을 사용하거나 `Ctrl+C`를 누릅니다. 종료 경로에서 모터 정지와 GPIO 정리를 시도하지만, 프로그램과 별개로 즉시 끌 수 있는 모터 전원 스위치를 준비하세요.
 
-`python 2main_brain.py`는 현재 `robot` 객체와 `move_backward`가 없어서 실행할 수 없습니다.
+`python 2main_brain.py`는 현재 진입점이 아닙니다. 이 파일은 지금 저장소에 없는 `robot` 객체를 요구하는 이전 실험 기록이라 그대로 실행되지 않습니다.
 
-## 문제 확인
+## 최초 실물 시험 순서
 
-### `GOOGLE_API_KEY environment variable is required`
+1. 모터 전원을 분리한 채 GPIO와 센서 값을 확인합니다.
+2. HC-SR04 ECHO에 5V가 직접 들어가지 않도록 분압 또는 레벨 변환을 확인합니다.
+3. 바퀴를 바닥에서 띄웁니다.
+4. API 없이 모터 방향과 정지만 짧게 확인합니다.
+5. 장애물을 두고 25cm 전진 차단과 18cm 연속 주행 정지를 각각 확인합니다.
+6. 센서를 분리하거나 ECHO 이상을 만들어 실패 시 정지 동작을 확인합니다.
+7. 카메라·마이크·Gemini를 차례로 추가합니다.
+8. 넓은 공간에서 낮은 속도와 짧은 명령으로 바닥 주행을 시작합니다.
 
-`.env`가 프로젝트 루트에 있는지, 변수명이 정확한지, 가상환경에서 `python-dotenv`가 설치되었는지 확인합니다.
+## 자주 확인할 문제
 
-### Gemini API 오류
-
-인터넷 연결, API 키 상태, 모델 사용 가능 여부, 할당량을 확인합니다. `test_case.py`는 세 번의 실제 요청을 수행합니다.
-
-### 오디오 오류
-
-`aplay -l`로 장치가 보이는지 확인하고, HDMI·USB·아날로그 출력 중 운영체제가 선택한 기본 장치를 확인합니다. 오디오 오류는 이동 스텁의 실행 가능 여부와 별개입니다.
-
-## 실제 하드웨어 연결 시 필요한 추가 구현
-
-현재 공개 코드만으로는 모터, HC-SR04 또는 카메라가 동작하지 않습니다. 실물 장치를 사용하려면 최소한 다음 작업이 필요합니다.
-
-- GPIO 라이브러리와 모터 드라이버 제어 구현
-- HC-SR04 읽기와 타임아웃·이상값 처리
-- 실제 센서 값을 사용하는 코드 수준 장애물 차단
-- 함수명, 지속시간, 속도 등 모델 인자 검증
-- 긴급 정지와 GPIO 정리 처리
-- 카메라가 필요하면 프레임 캡처와 이미지 입력 경로 구현
-- 가상 하드웨어 테스트를 통과한 뒤 바퀴를 띄운 상태에서 단계별 실물 검증
-
-개념 배선과 최초 테스트 순서는 [배선 가이드](wiring.md)를 참고하세요.
+- API 오류: 키, 모델 사용 가능 여부, 인터넷, 할당량을 확인합니다.
+- 마이크 무응답: `AUDIO_DEVICE`, 샘플레이트, USB 장치 번호를 확인합니다.
+- 카메라 실패: `CAMERA_INDEX`, `/dev/video*`, 다른 프로세스의 장치 점유를 확인합니다.
+- GPIO 테스트 모드: `RPi.GPIO` 설치와 실행 보드가 Raspberry Pi인지 확인합니다.
+- 로봇이 직진하지 않음: 코드뿐 아니라 배터리 전압, 모터 극성, 바닥 마찰과 좌우 모터 편차를 확인합니다.
