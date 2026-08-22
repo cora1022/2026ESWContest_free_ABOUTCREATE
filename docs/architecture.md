@@ -1,6 +1,6 @@
 # Architecture
 
-[English](architecture.md) | [한국어](ko/architecture.md)
+[English](architecture.md) | [한국어](ko/architecture.md) | [日本語](ja/architecture.md)
 
 This document describes the verified execution path in the restored May 28, 2026 integrated source. The difference between that source and the shortened July 9 public snapshot is recorded in the [Korean project story](ko/project-story.md).
 

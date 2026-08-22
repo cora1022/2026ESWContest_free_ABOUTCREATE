@@ -1,6 +1,6 @@
 # Publication Checklist
 
-[English](publication-checklist.md) | [한국어](ko/publication-checklist.md)
+[English](publication-checklist.md) | [한국어](ko/publication-checklist.md) | [日本語](ja/publication-checklist.md)
 
 Use this checklist for source files, Git history, backup archives, build photos, audio, and demo videos.
 

@@ -1,4 +1,4 @@
-[English](README.en.md) | [한국어](README.md)
+[English](README.en.md) | [한국어](README.md) | [日本語](README.ja.md)
 
 # Gemini Raspberry Pi Robot
 

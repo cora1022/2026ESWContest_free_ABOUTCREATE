@@ -1,6 +1,6 @@
 # Raspberry Pi Setup
 
-[English](raspberry-pi-setup.md) | [한국어](ko/raspberry-pi-setup.md)
+[English](raspberry-pi-setup.md) | [한국어](ko/raspberry-pi-setup.md) | [日本語](ja/raspberry-pi-setup.md)
 
 This guide prepares the restored integrated runtime on Raspberry Pi OS. Read the [wiring guide](wiring.md) before connecting motor power.
 

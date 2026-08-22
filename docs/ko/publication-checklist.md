@@ -1,6 +1,6 @@
 # 공개 전 체크리스트
 
-[English](../publication-checklist.md) | [한국어](publication-checklist.md)
+[English](../publication-checklist.md) | [한국어](publication-checklist.md) | [日本語](../ja/publication-checklist.md)
 
 이 체크리스트는 소스, Git 기록, 백업 압축 파일, 제작 사진, 음성과 시연 영상을 공개하기 전에 확인할 항목입니다.
 

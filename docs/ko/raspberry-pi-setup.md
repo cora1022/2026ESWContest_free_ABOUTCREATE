@@ -1,6 +1,6 @@
 # Raspberry Pi 설정
 
-[English](../raspberry-pi-setup.md) | [한국어](raspberry-pi-setup.md)
+[English](../raspberry-pi-setup.md) | [한국어](raspberry-pi-setup.md) | [日本語](../ja/raspberry-pi-setup.md)
 
 이 문서는 Raspberry Pi OS에서 현재 통합 코드를 준비하는 절차입니다. 실제 모터를 연결하기 전에 [배선 가이드](wiring.md)와 안전 주의사항을 먼저 확인하세요.
 

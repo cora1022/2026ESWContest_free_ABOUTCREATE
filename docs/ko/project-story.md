@@ -1,6 +1,6 @@
 # 스스로 판단하고 움직이는 로봇을 만들기까지
 
-[README로 돌아가기](../../README.md)
+[README로 돌아가기](../../README.md) | [日本語](../ja/project-story.md)
 
 ## 주제를 정하기까지
 

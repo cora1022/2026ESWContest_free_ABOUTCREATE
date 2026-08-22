@@ -1,6 +1,6 @@
 # Wiring Guide
 
-[English](wiring.md) | [한국어](ko/wiring.md)
+[English](wiring.md) | [한국어](ko/wiring.md) | [日本語](ja/wiring.md)
 
 This guide reflects the BCM pin assignments in the current `hardware.py`. Verify the motor-driver datasheet and the Raspberry Pi pinout before reconnecting the prototype.
 

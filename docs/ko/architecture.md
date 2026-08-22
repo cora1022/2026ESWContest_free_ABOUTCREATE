@@ -1,6 +1,6 @@
 # 아키텍처
 
-[English](../architecture.md) | [한국어](architecture.md)
+[English](../architecture.md) | [한국어](architecture.md) | [日本語](../ja/architecture.md)
 
 이 문서는 2026년 5월 28일 최종 통합본을 기준으로, 현재 공개 코드에서 실제로 이어지는 호출 경로를 설명합니다. 7월 9일 처음 공개된 축약본과의 차이는 [프로젝트 제작·복원 기록](project-story.md)에 따로 정리했습니다.
 

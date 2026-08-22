@@ -1,6 +1,6 @@
 # 배선 가이드
 
-[English](../wiring.md) | [한국어](wiring.md)
+[English](../wiring.md) | [한국어](wiring.md) | [日本語](../ja/wiring.md)
 
 이 문서는 현재 `hardware.py`의 BCM 핀 설정을 기준으로 합니다. 실제 차체에 다시 연결할 때는 모터 드라이버 데이터시트와 Raspberry Pi 핀맵을 함께 확인하세요.
 
