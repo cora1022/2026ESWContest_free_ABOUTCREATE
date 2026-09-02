@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rpi-robot-app"
+version = "2.0.0"
+description = "Raspberry Pi robot runtime for the remote control portfolio project"
+requires-python = ">=3.11"
+dependencies = [
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
+    "google-genai>=1.0",
+    "gTTS>=2.5",
+    "opencv-python>=4.10",
+    "Pillow>=10.0",
+    "python-dotenv>=1.0",
+    "robot-protocol>=0.1.0",
+    "rpi-lgpio>=0.6; platform_system == 'Linux' and platform_machine == 'aarch64'",
+    "SpeechRecognition>=3.10",
+    "websockets>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+robot-agent = "robot_app.bootstrap:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "../packages/robot-protocol/src"]
+asyncio_default_fixture_loop_scope = "function"
