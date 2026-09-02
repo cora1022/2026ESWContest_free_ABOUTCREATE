@@ -25,7 +25,9 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install -e ./packages/robot-protocol -e "./robot[dev]"
-      - run: python -m pytest robot
+      - name: Run robot tests
+        working-directory: robot
+        run: python -m pytest
 
   server:
     runs-on: ubuntu-latest
