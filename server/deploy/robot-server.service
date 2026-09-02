@@ -1,0 +1,22 @@
+[Unit]
+Description=Raspberry Pi Robot VPS Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=robotapp
+Group=robotapp
+WorkingDirectory=/opt/robot-pj/server
+EnvironmentFile=/etc/robot-server.env
+ExecStart=/opt/robot-pj/server/.venv/bin/uvicorn server.app:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/robot-server
+
+[Install]
+WantedBy=multi-user.target

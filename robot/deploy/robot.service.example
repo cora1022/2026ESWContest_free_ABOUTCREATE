@@ -1,0 +1,19 @@
+[Unit]
+Description=Raspberry Pi Robot Agent
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dslab
+WorkingDirectory=/home/dslab/Desktop/robot-pj/robot
+EnvironmentFile=/home/dslab/Desktop/robot-pj/robot/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/dslab/Desktop/robot-pj/robot/.venv/bin/robot-agent
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

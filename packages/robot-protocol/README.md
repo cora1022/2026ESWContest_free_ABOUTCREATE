@@ -27,7 +27,7 @@ from robot_protocol.messages import CommandMessage, HelloAckMessage, HelloMessag
 from robot_protocol.transport import pack_binary_event, unpack_binary_event
 ```
 
-`RBT1` 바이너리 프레임은 JSON 메타데이터와 이미지 같은 바이트 페이로드를 하나의 WebSocket 바이너리 메시지로 묶습니다.
+`RBT1` 바이너리 프레임은 JSON 메타데이터와 이미지 같은 바이트 페이로드를 하나의 WebSocket 바이너리 메시지로 묶습니다. 자세한 형식과 메시지 흐름은 [`../../docs/protocol.md`](../../docs/protocol.md)에 정리돼 있습니다.
 
 ## 테스트
 
