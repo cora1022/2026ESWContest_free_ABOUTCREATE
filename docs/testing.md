@@ -43,7 +43,7 @@ PYTHONPATH=packages/robot-protocol/src \
 - RBT1 frame 왕복
 - 잘못된 magic, metadata 크기와 빈 payload 거부
 
-공통 패키지는 action, 메시지 버전과 RBT1 frame을 로컬 테스트로 검증합니다.
+2026-09-02 구조 변경 시점에 공통 패키지 테스트 22개가 통과했습니다.
 
 ## Raspberry Pi 애플리케이션
 
@@ -100,7 +100,7 @@ cd /path/to/robot-pj
 find server/server/static -name '*.js' -print0 | xargs -0 -n1 node --check
 ```
 
-각 패키지 테스트와 JavaScript 검사는 위 로컬 명령으로 확인합니다.
+GitHub Actions도 공통 프로토콜 22개, 로봇 24개, 서버 20개 테스트와 같은 JavaScript 검사를 실행합니다.
 
 브라우저 수동 검증은 다음 순서를 사용합니다.
 

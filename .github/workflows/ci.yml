@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e "./packages/robot-protocol[test]"
+      - run: python -m pytest packages/robot-protocol
+
+  robot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e ./packages/robot-protocol -e "./robot[dev]"
+      - run: python -m pytest robot
+
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install -e ./packages/robot-protocol -e "./server[dev]"
+      - run: python -m pytest server
+      - name: Check server wheel assets
+        shell: bash
+        run: |
+          python -m pip wheel ./server --no-deps --wheel-dir wheelhouse
+          python -c 'from pathlib import Path; from zipfile import ZipFile; wheel = next(Path("wheelhouse").glob("robot_control_server-*.whl")); required = {"server/static/index.html", "server/static/style.css", "server/static/js/main.js"}; missing = required - set(ZipFile(wheel).namelist()); assert not missing, f"missing wheel assets: {sorted(missing)}"'
+      - name: Check frontend modules
+        shell: bash
+        run: |
+          node --check server/server/static/app.js
+          for file in server/server/static/js/*.js; do
+            node --check "$file"
+          done
