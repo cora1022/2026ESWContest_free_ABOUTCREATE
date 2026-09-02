@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>RPI Robot Control</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <main class="control-shell">
+    <header class="system-bar" aria-label="로봇 상태">
+      <div id="connectionBadge" class="status-item connection-status offline">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><strong>오프라인</strong><small>연결 상태</small></div>
+      </div>
+      <div class="status-item">
+        <i class="ph ph-monitor" aria-hidden="true"></i>
+        <div><strong id="modeValue">오프라인</strong><small>제어 모드</small></div>
+      </div>
+      <div class="status-item">
+        <i class="ph ph-ruler" aria-hidden="true"></i>
+        <div><strong id="distanceValue">-- cm</strong><small>전방 거리</small></div>
+      </div>
+    </header>
+
+    <section class="control-stage">
+      <article class="vision-panel" aria-label="로봇 카메라">
+        <div class="camera-frame">
+          <img id="cameraImage" alt="라즈베리파이 로봇 카메라 화면" hidden>
+          <div id="cameraStandby" class="camera-standby" role="status" aria-live="polite">
+            <i class="ph ph-video-camera" aria-hidden="true"></i>
+            <span>영상 연결 대기</span>
+          </div>
+          <div id="videoStatus" class="video-status" hidden><span aria-hidden="true"></span> LIVE</div>
+          <button id="captionSoundButton" class="caption-sound" type="button" aria-label="프론트 음성 끄기" aria-pressed="true">
+            <i class="ph ph-speaker-high" aria-hidden="true"></i>
+          </button>
+          <div id="robotCaption" class="robot-caption" role="status" aria-live="polite" hidden>
+            <span>ROBOT</span>
+            <p id="captionText"></p>
+          </div>
+          <audio id="frontendSpeech" preload="none"></audio>
+        </div>
+        <p id="cameraTime" class="sr-only" aria-live="polite">카메라 연결 대기 중</p>
+      </article>
+
+      <aside class="command-rail" aria-label="원격 주행 제어">
+        <div class="drive-grid">
+          <button class="drive-button drive-up" data-action="FORWARD" type="button" aria-label="전진">
+            <i class="ph ph-arrow-up" aria-hidden="true"></i><span>전진</span>
+          </button>
+          <button class="drive-button drive-left" data-action="LEFT" type="button" aria-label="좌회전">
+            <i class="ph ph-arrow-bend-up-left" aria-hidden="true"></i><span>좌회전</span>
+          </button>
+          <button class="drive-button drive-right" data-action="RIGHT" type="button" aria-label="우회전">
+            <i class="ph ph-arrow-bend-up-right" aria-hidden="true"></i><span>우회전</span>
+          </button>
+          <button class="drive-button drive-down" data-action="BACKWARD" type="button" aria-label="후진">
+            <i class="ph ph-arrow-down" aria-hidden="true"></i><span>후진</span>
+          </button>
+        </div>
+
+        <div class="rail-divider"></div>
+
+        <div class="support-actions">
+          <button id="captureButton" class="support-button" type="button">
+            <i class="ph ph-camera" aria-hidden="true"></i><span>사진 촬영</span>
+          </button>
+          <button id="videoButton" class="support-button" type="button" aria-pressed="false">
+            <i class="ph ph-video-camera" aria-hidden="true"></i><span>영상 시작</span>
+          </button>
+          <button id="voiceButton" class="support-button" type="button" aria-pressed="false">
+            <i class="ph ph-microphone" aria-hidden="true"></i><span>음성 명령</span>
+          </button>
+        </div>
+        <p id="safetyMessage" class="sr-only" aria-live="polite">연결 대기 중</p>
+      </aside>
+    </section>
+
+    <footer class="activity-footer">
+      <h2>최근 활동</h2>
+      <ol id="eventList" class="event-list" aria-live="polite"></ol>
+    </footer>
+  </main>
+
+  <section id="loginOverlay" class="login-overlay">
+    <form id="loginForm" class="login-panel">
+      <p class="wordmark"><span>RPI</span> ROBOT</p>
+      <p class="login-eyebrow">SECURE CONTROL SESSION</p>
+      <h1>로봇 연결</h1>
+      <p class="login-description">VPS를 거쳐 Raspberry Pi와 안전한 제어 세션을 시작합니다.</p>
+
+      <div class="connection-preview" aria-label="연결 준비 상태" aria-live="polite">
+        <div id="serverConnection" class="connection-check checking">
+          <span class="connection-check-dot" aria-hidden="true"></span>
+          <div><small>제어 서버</small><strong>연결 확인 중</strong></div>
+          <i class="ph ph-cloud" aria-hidden="true"></i>
+        </div>
+        <div id="robotConnection" class="connection-check checking">
+          <span class="connection-check-dot" aria-hidden="true"></span>
+          <div><small>Raspberry Pi</small><strong>상태 확인 중</strong></div>
+          <i class="ph ph-robot" aria-hidden="true"></i>
+        </div>
+      </div>
+
+      <label for="accessKey">제어 키</label>
+      <div class="key-field">
+        <i class="ph ph-key" aria-hidden="true"></i>
+        <input id="accessKey" type="password" autocomplete="current-password" minlength="8" placeholder="제어 키를 입력하세요" required>
+      </div>
+      <button type="submit"><span>제어 세션 시작</span><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+      <p class="security-note"><i class="ph ph-shield-check" aria-hidden="true"></i> 키는 저장하지 않고 보안 세션 쿠키만 사용합니다</p>
+      <p id="loginError" class="login-error" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "Raspberry Pi Robot Control",
+  "short_name": "Robot",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

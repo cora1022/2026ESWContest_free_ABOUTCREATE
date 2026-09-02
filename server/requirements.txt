@@ -1,0 +1,2 @@
+-e ../packages/robot-protocol
+-e .
