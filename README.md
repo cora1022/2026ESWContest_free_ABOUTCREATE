@@ -21,7 +21,7 @@ IoT 수업의 과제 대체 프로젝트로 시작했습니다. OpenClaw가 상�
 음성 명령, 카메라 판단과 모터 동작을 연결했던 초기 프로토타입 시연입니다. 현재 모노레포의 브라우저 원격 주행을 검증한 영상은 아닙니다.
 
 <p align="center">
-  <a href="https://youtu.be/NtMfFOqJAB8"><img src="https://img.youtube.com/vi/NtMfFOqJAB8/hqdefault.jpg" alt="로봇 시연 영상 보기" title="YouTube에서 시연 영상 보기" width="520"></a>
+  <a href="https://youtu.be/NtMfFOqJAB8"><img src="docs/images/youtube-demo-preview.png" alt="YouTube 시연 영상: 2026ESWContest_자유공모_ABOUTCREATE_시연동영상" title="YouTube에서 시연 영상 보기" width="760"></a>
 </p>
 
 ## 프로젝트 목표
